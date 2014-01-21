@@ -2,14 +2,16 @@ package main
 
 import (
   "log"
+  "flag"
   "time"
+  "strconv"
   "net/http"
   "regexp"
   "html/template"
   _ "github.com/lib/pq"
 )
 
-var connectionString =  "user=temperature password=TemperatuRe dbname=temperature_development"
+var connectionString =  "user=temperature password=TemperatuRe dbname="
 
 var validPath = regexp.MustCompile("^*$")
 
@@ -64,7 +66,16 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 }
 
 func main() {
+  port := flag.Int("port", 9001, "Port auf dem der Server hören soll.")
+  dbName := flag.String("db", "temperature_development", "Zu verwendende Datenbank.")
+  flag.Parse()
+
+  // Connectionstring zusammenbauen.
+  connectionString += *dbName
+
   http.HandleFunc("/", makeHandler(rootHandler))
   http.HandleFunc("/measurements/", makeHandler(measurementHandler))
-  log.Fatal(http.ListenAndServe(":9001", nil))
+
+  log.Printf("Running on Port %d and using DB %s...", *port, *dbName)
+  log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }
