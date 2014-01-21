@@ -3,12 +3,12 @@ package main
 import (
   "log"
   "flag"
-  "time"
   "strconv"
   "net/http"
   "regexp"
   "html/template"
   _ "github.com/lib/pq"
+  "github.com/codegangsta/martini"
 )
 
 var connectionString =  "user=temperature password=TemperatuRe dbname="
@@ -48,23 +48,6 @@ func renderTemplate(w http.ResponseWriter, tmpl string, ms []RootViewModel) {
 // ------- HELPERS (END) ---
 
 
-func makeHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
-  return func(w http.ResponseWriter, r *http.Request) {
-    start := time.Now()
-
-    m := validPath.FindStringSubmatch(r.URL.Path)
-    if m == nil {
-      http.NotFound(w, r)
-      return
-    }
-    fn(w, r)
-
-    // Dauer berechnen und anzeigen.
-    duration := time.Since(start)
-    log.Printf("Duration: %s", duration)
-  }
-}
-
 func main() {
   port := flag.Int("port", 9001, "Port auf dem der Server hören soll.")
   dbName := flag.String("db", "temperature_development", "Zu verwendende Datenbank.")
@@ -73,9 +56,12 @@ func main() {
   // Connectionstring zusammenbauen.
   connectionString += *dbName
 
-  http.HandleFunc("/", makeHandler(rootHandler))
-  http.HandleFunc("/api/measurements/", makeHandler(measurementHandler))
+  m := martini.Classic()
+
+  // Setup routes
+  m.Get("/", rootHandler)
+  m.Post("/api/measurements", postMeasurementHandler)
 
   log.Printf("Running on Port %d and using DB %s...", *port, *dbName)
-  log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
+  log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), m))
 }

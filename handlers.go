@@ -1,7 +1,6 @@
 package main
 
 import (
-  "fmt"
   "log"
   "time"
   "io/ioutil"
@@ -10,7 +9,7 @@ import (
   "encoding/json"
 )
 
-func rootHandler(resp http.ResponseWriter, req *http.Request) {
+func rootHandler(res http.ResponseWriter, req *http.Request) {
   var (
     sensor string
     value int
@@ -43,37 +42,11 @@ func rootHandler(resp http.ResponseWriter, req *http.Request) {
       CreatedAt:created_at.Format("am Mo 2. Jan 2006 um 15:04:05")  })
   }
 
-  renderTemplate(resp, "index", ms)
-}
-
-func getMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
-  var (
-    sensor string
-    value int
-  )
-
-  // DB öffnen...
-  db, err := sql.Open("postgres", connectionString)
-  panicOnError(err)
-  // ...DB am Ende der Funktion wieder schließen.
-  defer db.Close()
-
-  // Letzten Eintrag abfragen.
-  rows, err := db.Query("select sensor, value from measurements order by created_at desc limit 1")
-  panicOnError(err)
-
-  // Eintrag lesen.
-  rows.Next()
-  err = rows.Scan(&sensor, &value)
-  panicOnError(err)
-
-  // Ergebnis anzeigen.
-  fmt.Fprintf(resp, "Sensor: %s => %d", sensor, value)
+  renderTemplate(res, "index", ms)
 }
 
 func postMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
   // Json-Payload aus dem Request lesen.
-  log.Printf("POST")
   var mm JsonMeasurement
   body, err := ioutil.ReadAll(req.Body)
   panicOnError(err)
@@ -96,11 +69,4 @@ func postMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
 
 }
 
-func measurementHandler(resp http.ResponseWriter, req *http.Request) {
-  switch req.Method {
-    case "GET": getMeasurementHandler(resp, req)
-    case "POST": postMeasurementHandler(resp, req)
-    default: http.Error(resp, "Unbehandeltes Http-Verb!", http.StatusNotFound)
-  }
-}
 
