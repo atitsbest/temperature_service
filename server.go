@@ -74,7 +74,7 @@ func main() {
   connectionString += *dbName
 
   http.HandleFunc("/", makeHandler(rootHandler))
-  http.HandleFunc("/measurements/", makeHandler(measurementHandler))
+  http.HandleFunc("/api/measurements/", makeHandler(measurementHandler))
 
   log.Printf("Running on Port %d and using DB %s...", *port, *dbName)
   log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
