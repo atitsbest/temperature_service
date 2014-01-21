@@ -73,6 +73,7 @@ func getMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
 
 func postMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
   // Json-Payload aus dem Request lesen.
+  log.Printf("POST")
   var mm JsonMeasurement
   body, err := ioutil.ReadAll(req.Body)
   panicOnError(err)
