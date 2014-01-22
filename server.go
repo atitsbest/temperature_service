@@ -20,12 +20,12 @@ var (
 
 type (
   JsonMeasurement struct {
-    Measurement Measurement `json: measurement`
+    Measurement Measurement
   }
 
   Measurement struct {
-    Sensor string `json:sensor`
-    Value int `json:value`
+    Sensor string
+    Value string
   }
 
   RootViewModel struct {

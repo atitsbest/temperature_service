@@ -2,6 +2,7 @@ package main
 
 import (
   "log"
+  "strconv"
   "time"
   "net/http"
   "database/sql"
@@ -48,6 +49,10 @@ func postMeasurementHandler(mm JsonMeasurement) string {
   // Json-Payload aus dem Request lesen.
   log.Printf("Payload => %#v", mm)
 
+  // Derzeit müssen wir den Wert noch von String in Int konvertieren.
+  val, err := strconv.ParseInt(mm.Measurement.Value, 10, 16)
+  if err != nil { panicOnError(err) }
+
   // In die DB einfügen.
   db, err := sql.Open("postgres", connectionString)
   panicOnError(err)
@@ -55,7 +60,7 @@ func postMeasurementHandler(mm JsonMeasurement) string {
 
   _, err = db.Exec("insert into measurements(sensor, value, created_at) values(($1),($2),($3))",
     mm.Measurement.Sensor,
-    mm.Measurement.Value,
+    val,
     time.Now())
   panicOnError(err)
 
