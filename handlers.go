@@ -3,10 +3,8 @@ package main
 import (
   "log"
   "time"
-  "io/ioutil"
   "net/http"
   "database/sql"
-  "encoding/json"
 )
 
 func rootHandler(res http.ResponseWriter, req *http.Request) {
@@ -45,15 +43,9 @@ func rootHandler(res http.ResponseWriter, req *http.Request) {
   renderTemplate(res, "index", ms)
 }
 
-func postMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
+// Neue Messung in die DB schreiben.
+func postMeasurementHandler(mm JsonMeasurement) string {
   // Json-Payload aus dem Request lesen.
-  var mm JsonMeasurement
-  body, err := ioutil.ReadAll(req.Body)
-  panicOnError(err)
-  log.Printf("Body => %s", body)
-  err = json.Unmarshal(body, &mm)
-  panicOnError(err)
-
   log.Printf("Payload => %#v", mm)
 
   // In die DB einfügen.
@@ -67,6 +59,7 @@ func postMeasurementHandler(resp http.ResponseWriter, req *http.Request) {
     time.Now())
   panicOnError(err)
 
+  return "OK"
 }
 
 
