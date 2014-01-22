@@ -62,7 +62,7 @@ func main() {
   m := martini.Classic()
 
   // Setup routes
-  m.Get("/", rootHandler)
+  // m.Get("/", rootHandler)
   m.Post("/api/measurements", binding.Json(JsonMeasurement{}), func(mm JsonMeasurement, err binding.Errors, res http.ResponseWriter) string {
     if err.Count() > 0 {
       res.WriteHeader(http.StatusBadRequest)
