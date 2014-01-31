@@ -152,7 +152,7 @@ func downsampleSensor(db *sqlx.DB, redisUrl string, sensor string, wg *sync.Wait
 }
 
 // Alle Sensoren downsamplen und in Redis eintragen.
-func downsampleAll(db *sqlx.DB, redisUrl string, quit chan bool) {
+func downsampleAll(db *sqlx.DB, redisUrl string, pause int, quit chan bool) {
   // Bestätigen, wenn wir fertig sind.
   defer func() { quit<-true }()
 
@@ -180,7 +180,7 @@ func downsampleAll(db *sqlx.DB, redisUrl string, quit chan bool) {
     // timer := time.NewTimer(time.Second * 10)
     select {
       case <- quit: return // defer quit<-true
-      case <- time.After(time.Second * 10): break // Pause zu ende.
+      case <- time.After(time.Second * time.Duration(pause)): break // Pause zu ende.
     }
   }
 }
@@ -192,6 +192,7 @@ func main() {
   port := flag.Int("port", 9001, "Port auf dem der Server hören soll.")
   dbName := flag.String("db", "temperature_development", "Zu verwendende Datenbank.")
   redisUrl := flag.String("redis", "127.0.0.1:6379", "Url zum Redis-Server.")
+  pause := flag.Int("pause", 10, "Pause in Sekunden zwischen den Downsample-Vorängen.")
   flag.Parse()
 
   // Connectionstring zusammenbauen.
@@ -218,7 +219,7 @@ func main() {
   quit := make(chan bool)
 
   // Downsampler parallel starten...
-  go downsampleAll(db, *redisUrl, quit)
+  go downsampleAll(db, *redisUrl, *pause, quit)
 
   // Wir fangen Ctrl-C ab und geben dem Downsample Bescheid,
   // dass er sich beenden soll.
