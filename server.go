@@ -11,6 +11,7 @@ import (
   "regexp"
   "os"
   "os/signal"
+  "sync"
   "html/template"
   _ "github.com/lib/pq"
   "github.com/codegangsta/martini"
@@ -99,18 +100,63 @@ func sensorMeasurementChunk(db *sqlx.DB, sensor string, chunkSize int, offset in
   return chunks
 }
 
-func downsampleData(db *sqlx.DB, redisUrl string, quit chan bool) {
+// Einen Sensor downsamplen und in Redis eintragen.
+func downsampleSensor(db *sqlx.DB, redisUrl string, sensor string, wg *sync.WaitGroup) {
   const MAX_MEASUREMENTS = 500.0
-
-  // Bestätigen, wenn wir fertig sind.
-  defer func() { quit<-true }()
-
-  log.Print("Starte Downsampler...")
+  defer wg.Done()
 
   // Verbindung zu Redis herstellen.
   con, err := redis.DialTimeout("tcp", redisUrl, time.Duration(10)*time.Second)
   if err != nil { log.Fatal(err) }
   defer con.Close()
+
+  redisKey := fmt.Sprintf("%s:all", sensor)
+  redisTmpKey := fmt.Sprintf("%s:%d", redisKey, time.Now().Unix())
+
+  count := sensorMeasurementCount(db, sensor)
+  if count == 0 { return  } // Gibt es keine Einträge für den Sensor müssen wir auch nicht weiter machen.
+
+  // Damit auch der Rest mitgenommen wird, dividieren wir floats
+  // und runden auf.
+  chunkSize := int(math.Ceil(float64(count) / MAX_MEASUREMENTS))
+  log.Printf("%s #%d/%d", sensor, count, chunkSize)
+
+  for offset := 0; offset <= count; offset += chunkSize {
+    chunks := sensorMeasurementChunk(db, sensor, chunkSize, offset)
+    if len(chunks) == 0 { continue }
+
+    // Durchschntl. Temperature.
+    avgValue := 0
+    for _,c := range chunks { avgValue += c.Value }
+    avgValue /= len(chunks)
+
+    // Durchschnittliches Datum.
+    var avgUnixDate int64 = 0
+    for _,c := range chunks { avgUnixDate += c.CreatedAt.Unix() }
+    avgUnixDate /= int64(len(chunks))
+
+    // Den Eintrag (also das "value" aus "key/value" in Redis) erstellen.
+    entry := fmt.Sprintf("{\"d\":%d, \"v\":%d}", avgUnixDate, avgValue)
+
+    // Neuen Eintrag in Redis speichern.
+    r := con.Cmd("zadd", redisTmpKey, avgUnixDate, entry)
+    if r.Err != nil {log.Print("REDIS"); log.Fatal(r.Err) }
+  }
+
+  // Alte gegen neue Werte austauschen.
+  con.Cmd("multi")
+  con.Cmd("del", redisKey)
+  con.Cmd("rename", redisTmpKey, redisKey)
+  r := con.Cmd("exec")
+  if r.Err != nil { log.Fatal(r.Err) }
+}
+
+// Alle Sensoren downsamplen und in Redis eintragen.
+func downsampleAll(db *sqlx.DB, redisUrl string, quit chan bool) {
+  // Bestätigen, wenn wir fertig sind.
+  defer func() { quit<-true }()
+
+  log.Print("Starte Downsampler...")
 
   // Endlosschleife
   for {
@@ -118,64 +164,23 @@ func downsampleData(db *sqlx.DB, redisUrl string, quit chan bool) {
     startTime := time.Now()
 
     sensors := sensorNames(db)
+    wg := new(sync.WaitGroup)
 
     for _,sensor := range sensors {
-      redisKey := fmt.Sprintf("%s:all", sensor.Sensor)
-      redisTmpKey := redisKey + ":" + string(time.Now().Unix())
-
-      count := sensorMeasurementCount(db, sensor.Sensor)
-      log.Printf("%s #%d", sensor.Sensor, count)
-      if count == 0 { continue  } // Gibt es keine Einträge für den Sensor
-      // müssen wir auch nicht weiter machen.
-
-      // Damit auch der Rest mitgenommen wird, dividieren wir floats
-      // und runden auf.
-      chunkSize := int(math.Ceil(float64(count) / MAX_MEASUREMENTS))
-      log.Printf("Chunksize = %d", chunkSize)
-
-      for offset := 0; offset <= count; offset += chunkSize {
-        chunks := sensorMeasurementChunk(db, sensor.Sensor, chunkSize, offset)
-        if len(chunks) == 0 { continue }
-
-        // Durchschntl. Temperature.
-        avgValue := 0
-        for _,c := range chunks { avgValue += c.Value }
-        avgValue /= len(chunks)
-
-        // Durchschnittliches Datum.
-        var avgUnixDate int64 = 0
-        for _,c := range chunks { avgUnixDate += c.CreatedAt.Unix() }
-        avgUnixDate /= int64(len(chunks))
-
-        // Den Eintrag (also das "value" aus "key/value" in Redis) erstellen.
-        entry := fmt.Sprintf("{\"d\":%d, \"v\":%d}", avgUnixDate, avgValue)
-
-        // Neuen Eintrag in Redis speichern.
-        r := con.Cmd("zadd", redisTmpKey, avgUnixDate, entry)
-        if r.Err != nil { log.Fatal(r.Err) }
-      }
-
-      // Alte gegen neue Werte austauschen.
-      con.Cmd("multi")
-      con.Cmd("del", redisKey)
-      con.Cmd("rename", redisTmpKey, redisKey)
-      r := con.Cmd("exec")
-      if r.Err != nil { log.Fatal(err) }
-
-
+      wg.Add(1)
+      go downsampleSensor(db, redisUrl, sensor.Sensor, wg)
     }
+
+    // Warten bis alle Sensoren
+    wg.Wait()
 
     log.Printf("Durchgang fertig (%s)!", time.Since(startTime))
 
     log.Printf("Pause!")
-
-    timer := time.NewTimer(time.Second * 10)
-
-    for {
-      select {
-        case <- quit: return // defer quit<-true
-        case <- timer.C: break
-      }
+    // timer := time.NewTimer(time.Second * 10)
+    select {
+      case <- quit: return // defer quit<-true
+      case <- time.After(time.Second * 10): break // Pause zu ende.
     }
   }
 }
@@ -213,7 +218,7 @@ func main() {
   quit := make(chan bool)
 
   // Downsampler parallel starten...
-  go downsampleData(db, *redisUrl, quit)
+  go downsampleAll(db, *redisUrl, quit)
 
   // Wir fangen Ctrl-C ab und geben dem Downsample Bescheid,
   // dass er sich beenden soll.
