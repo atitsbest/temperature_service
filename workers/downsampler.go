@@ -30,7 +30,7 @@ func sensorMeasurementCount(db *sqlx.DB, sensor string) int {
 
   var count int
   e := row.Scan(&count)
-  panicOnError(e)
+  if e != nil { log.Panic(e) }
 
   return count
 }
@@ -38,7 +38,6 @@ func sensorMeasurementCount(db *sqlx.DB, sensor string) int {
 
 // Liefert alle Sensorennamen.
 func sensorNames(db *sqlx.DB) []Sensor {
-  // Letzten Eintrag abfragen.
   sensors := []Sensor{}
   db.Selectv(&sensors, "SELECT DISTINCT sensor FROM measurements")
 
@@ -48,7 +47,6 @@ func sensorNames(db *sqlx.DB) []Sensor {
 
 // Liefert alle Sensorennamen.
 func sensorMeasurementChunk(db *sqlx.DB, sensor string, chunkSize int, offset int) []Chunk {
-  // Letzten Eintrag abfragen.
   chunks := []Chunk{}
   db.Selectv(&chunks,
   "SELECT * FROM measurements WHERE sensor = $1 LIMIT $2 OFFSET $3",
@@ -76,7 +74,7 @@ func downsampleSensor(db *sqlx.DB, redisUrl string, sensor string, wg *sync.Wait
   // Damit auch der Rest mitgenommen wird, dividieren wir floats
   // und runden auf.
   chunkSize := int(math.Ceil(float64(count) / MAX_MEASUREMENTS))
-  log.Printf("%s #%d/%d", sensor, count, chunkSize)
+  log.Printf("%s #%d/%d ...", sensor, count, chunkSize)
 
   for offset := 0; offset <= count; offset += chunkSize {
     chunks := sensorMeasurementChunk(db, sensor, chunkSize, offset)
@@ -109,7 +107,7 @@ func downsampleSensor(db *sqlx.DB, redisUrl string, sensor string, wg *sync.Wait
 }
 
 // Alle Sensoren downsamplen und in Redis eintragen.
-func downsampleAll(db *sqlx.DB, redisUrl string, pause int, quit chan bool) {
+func DownsampleAll(db *sqlx.DB, redisUrl string, pause int, quit chan bool) {
   // Bestätigen, wenn wir fertig sind.
   defer func() { quit<-true }()
 
