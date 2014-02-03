@@ -2,23 +2,20 @@ package main
 
 import (
   "log"// {{{
-  "fmt"
-  "time"
   "flag"
-  "math"
   "strconv"
   "net/http"
   "regexp"
   "os"
   "os/signal"
-  "sync"
   "html/template"
   _ "github.com/lib/pq"
   "github.com/codegangsta/martini"
   "github.com/codegangsta/martini-contrib/binding"
-  "github.com/fzzy/radix/redis"
   "github.com/jmoiron/sqlx"
-  "./workers"// }}}
+  "./workers"
+  "./handlers"
+  // }}}
 )
 
 var (
@@ -36,20 +33,12 @@ type (// {{{
   }
 )// }}}
 
-// ------- HELPERS --------
-
-func panicOnError(e error) {// {{{
-  if e != nil { log.Fatal(e) }
-}
-
 func renderTemplate(w http.ResponseWriter, tmpl string, ms []RootViewModel) {
   err := templates.ExecuteTemplate(w, tmpl+".html", ms)
   if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
   }
 }// }}}
-
-// ------- HELPERS (END) ---
 
 
 func main() {
@@ -72,11 +61,11 @@ func main() {
   // Setup routes
   m := martini.Classic()
   // m.Get("/", rootHandler)
-  m.Post("/api/measurements", binding.Json(JsonMeasurement{}), func(mm JsonMeasurement, err binding.Errors, res http.ResponseWriter) string {
+  m.Post("/api/measurements", binding.Json(handlers.JsonMeasurement{}), func(mm handlers.JsonMeasurement, err binding.Errors, res http.ResponseWriter) string {
     if err.Count() > 0 {
       res.WriteHeader(http.StatusBadRequest)
     }
-    return postMeasurementHandler(mm)
+    return handlers.PostMeasurementHandler(connectionString, mm)
   })
 
 
@@ -84,7 +73,7 @@ func main() {
   quit := make(chan bool)
 
   // Downsampler parallel starten...
-  go downsampleAll(db, *redisUrl, *pause, quit)
+  go workers.DownsampleAll(db, *redisUrl, *pause, quit)
 
   // Wir fangen Ctrl-C ab und geben dem Downsample Bescheid,
   // dass er sich beenden soll.
