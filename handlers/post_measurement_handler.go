@@ -1,10 +1,14 @@
 package handlers
 
 import (
+  "fmt"
   "log"
   "time"
   "strconv"
+  "strings"
+  "net/http"
   "database/sql"
+  "github.com/fzzy/radix/redis"
 )
 
 type (
@@ -33,14 +37,39 @@ func PostMeasurementHandler(connectionString string, mm JsonMeasurement) string 
   defer db.Close()
 
   _, err = db.Exec("insert into measurements(sensor, value, created_at) values(($1),($2),($3))",
-    mm.Measurement.Sensor,
-    val,
-    time.Now())
+  mm.Measurement.Sensor,
+  val,
+  time.Now())
   if err != nil { log.Panic(err) }
 
   return "OK"
 }
 
 // Alles Messungen als Json aus Redis liefern.
-func GetMeasurementsHandler(redisUrl string) string {
+func GetMeasurementsHandler(redisUrl *string) func(w http.ResponseWriter) {
+  return func(w http.ResponseWriter) {
+    // Verbindung zu Redis herstellen.
+    con, err := redis.DialTimeout("tcp", *redisUrl, time.Duration(10)*time.Second)
+    if err != nil { log.Fatal(err) }
+    defer con.Close()
+
+    // Sensoren auslesen.
+    ss, err := con.Cmd("keys", "*:all").List()
+    if err != nil { log.Fatal(err) }
+
+    // Hier werden die einzelnen Sensorendaten gepseichert.
+    rows := make([]string, len(ss))
+
+
+    for i,sensor := range ss {
+      // Daten für den Sensor holen.
+      ms, err := con.Cmd("zrange", sensor, 0, -1).List()
+      if err != nil { log.Fatal(err) }
+
+      rows[i] = fmt.Sprintf("%s:[%s]", sensor, strings.Join(ms, ","))
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.Write([]byte( fmt.Sprintf("{%s}", strings.Join(rows, ",")) ))
+  }
 }
