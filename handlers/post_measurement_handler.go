@@ -41,3 +41,6 @@ func PostMeasurementHandler(connectionString string, mm JsonMeasurement) string 
   return "OK"
 }
 
+// Alles Messungen als Json aus Redis liefern.
+func GetMeasurementsHandler(redisUrl string) string {
+}

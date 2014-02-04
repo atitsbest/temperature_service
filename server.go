@@ -1,52 +1,41 @@
 package main
 
 import (
-  "log"// {{{
+  "log"
   "flag"
   "strconv"
   "net/http"
   "regexp"
   "os"
   "os/signal"
-  "html/template"
   _ "github.com/lib/pq"
   "github.com/codegangsta/martini"
   "github.com/codegangsta/martini-contrib/binding"
   "github.com/jmoiron/sqlx"
-  "./workers"
-  "./handlers"
-  // }}}
+  "github.com/atitsbest/temperature_service/workers"
+  "github.com/atitsbest/temperature_service/handlers"
 )
 
 var (
   connectionString =  "user=temperature password=TemperatuRe dbname="
   validPath = regexp.MustCompile("^*$")
-  templates = template.Must(template.ParseFiles("views/index.html"))
 )
 
-type (// {{{
+type (
 
   RootViewModel struct {
     Sensor string
     Value float32
     CreatedAt string
   }
-)// }}}
-
-func renderTemplate(w http.ResponseWriter, tmpl string, ms []RootViewModel) {
-  err := templates.ExecuteTemplate(w, tmpl+".html", ms)
-  if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-  }
-}// }}}
-
+)
 
 func main() {
   // Parameter.
   port :=       flag.Int(   "port", 9001,                       "Port auf dem der Server hören soll.")
   dbName :=     flag.String("db",   "temperature_development",  "Zu verwendende Datenbank.")
   redisUrl :=   flag.String("redis","127.0.0.1:6379",           "Url zum Redis-Server.")
-  pause :=      flag.Int(   "pause", 10,                        "Pause in Sekunden zwischen den Downsample-Vorängen.")
+  pause :=      flag.Int(   "pause", 1000,                      "Pause in Sekunden zwischen den Downsample-Vorängen.")
   flag.Parse()
 
   // Connectionstring zusammenbauen.
@@ -60,7 +49,8 @@ func main() {
 
   // Setup routes
   m := martini.Classic()
-  // m.Get("/", rootHandler)
+  m.Get("/", handlers.RootHandler)
+  m.Get("/api/measurements.json", handlers.GetMeasurementsHandler(redisUrl))
   m.Post("/api/measurements", binding.Json(handlers.JsonMeasurement{}), func(mm handlers.JsonMeasurement, err binding.Errors, res http.ResponseWriter) string {
     if err.Count() > 0 {
       res.WriteHeader(http.StatusBadRequest)
