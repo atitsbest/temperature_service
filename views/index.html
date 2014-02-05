@@ -30,19 +30,7 @@
         <div class="container" ng:controller="DashboardCtrl">
           <h1>Temperaturen</h1>
 
-          <div class="row sensor" ng:repeat="sensor in sensors">
-              <div class="col-sm-12">
-                <h4 class="name pull-left">
-                  %% sensor %%
-                  <small class="timeago">
-                    <!--<span class="glyphicon glyphicon-time"></span>-->
-                    <span class="val">time</span>
-                  </small>
-                </h4>
-                <h3 class="temperature pull-right">
-                  <span>%% currentTemperature(sensor) %%</span><sup>°C</sup>
-                </h3>
-              </div>
+          <div class="row sensor">
               <div class="col-sm-12">
                 <highchart id="%%sensor%%Chart" config="chartConfig"></hightchart>
               </div>

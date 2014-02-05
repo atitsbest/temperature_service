@@ -12,14 +12,9 @@
     return {
       series: [],
       chart: {
-          type: 'spline',
-          height: 200,
-          backgroundColor: colors[0],
-          borderColor: colors[2]
+          type: 'area',
+          height: 200
       },
-      colors: [
-        colors[2]
-      ],
       title: {
           text: ''
       },
@@ -31,39 +26,22 @@
           dateTimeLabelFormats: { // don't display the dummy year
               month: '%e. %b',
               year: '%b'
-          },
-          labels: {
-            style: { color: 'rgba(0,0,0, .2)' }
-          },
-          tickColor: colors[1],
-          lineColor: colors[1]
+          }
       },
       yAxis: {
           title: {
-              text: ''
-          },
-          labels: {
-            style: { color: 'rgba(0,0,0, .2)' }
-          },
-          min: 9,
-          gridLineColor: colors[1],
-          gridLineDashStyle: 'ShortDash',
-          lineColor: colors[1]
+              text: 'Temperatur'
+          }
       },
       legend: {
           enabled: false
       },
-      plotOptions: {
-          spline: {
-              lineWidth: 2,
-              marker: {
-                  enabled: false
-              }
-          },
-          area: {
-            fillColor: 'rgba(255,255,255,.1)'
-          }
-      },
+      // plotOptions: {
+      //     series: {
+      //       //fillColor: null,
+      //       fillOpacity: 0.2
+      //     }
+      // },
       tooltip: {
           enabled: true,
           formatter: function() {
