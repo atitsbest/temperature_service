@@ -8,6 +8,7 @@ import (
   "strings"
   "net/http"
   "database/sql"
+  // "encoding/json"
   "github.com/fzzy/radix/redis"
 )
 
@@ -60,16 +61,15 @@ func GetMeasurementsHandler(redisUrl *string) func(w http.ResponseWriter) {
     // Hier werden die einzelnen Sensorendaten gepseichert.
     rows := make([]string, len(ss))
 
-
     for i,sensor := range ss {
       // Daten für den Sensor holen.
       ms, err := con.Cmd("zrange", sensor, 0, -1).List()
       if err != nil { log.Fatal(err) }
 
-      rows[i] = fmt.Sprintf("%s:[%s]", sensor, strings.Join(ms, ","))
+      rows[i] = fmt.Sprintf(`"%s":[%s]`, sensor, strings.Join(ms, ","))
     }
 
-    w.Header().Set("Content-Type", "application/json")
-    w.Write([]byte( fmt.Sprintf("{%s}", strings.Join(rows, ",")) ))
+    w.Header().Set("Content-Type", "application/json; charset=utf-8")
+    fmt.Fprintf(w, "{%s}", strings.Join(rows, ","))
   }
 }

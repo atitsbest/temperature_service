@@ -1,20 +1,20 @@
 package workers
 
 import (
-  "log"// {{{
+  "log"
   "fmt"
   "time"
   "math"
   "sync"
   _ "github.com/lib/pq"
   "github.com/fzzy/radix/redis"
-  "github.com/jmoiron/sqlx"// }}}
+  "github.com/jmoiron/sqlx"
 )
 
 type (
   Chunk struct {
-    Sensor string
-    Value int
+    Sensor    string
+    Value     int
     CreatedAt time.Time `db:"created_at"`
   }
 
