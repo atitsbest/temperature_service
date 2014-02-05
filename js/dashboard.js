@@ -1,8 +1,3 @@
-//= require underscore
-//= require highcharts
-//= require jquery.timeago
-//= require jquery.timeago.de
-//
 (function() {
 
   var colors= [
@@ -15,6 +10,7 @@
 
   function generate_options(colors) {
     return {
+      series: [],
       chart: {
           type: 'spline',
           height: 200,
@@ -92,51 +88,91 @@
       };
   }
 
+  angular.module('temperature', ['highcharts-ng']).
+    
+    config(function($interpolateProvider) {
+      $interpolateProvider.startSymbol('%%');
+      $interpolateProvider.endSymbol('%%');
+    }).
 
-  $(function() {
-    $.when($.getJSON("/api/measurements.json")).
-      then(function(data) {
-        $(".sensor").each(function(i, panel) {
+    controller('DashboardCtrl', function($scope, $http) {
+      // {"sensor1_name": [{"d": 1234567, "v": 2530}, ...], "sensor2_name": [...]}
+      $scope.measurements = {};
+      // Liste der Sensoren.
+      $scope.sensors = [];
 
-          var sensor = $(panel).data('sensor');
-          if (sensor !== undefined) {
-            // Farbe fÃ¼r diesen Chart.
-            var current_colors = colors[i%colors.length];
-          
-            // Daten fÃ¼r den einen Sensor filtern.
-            var serie = create_serie_for(data, sensor);
+      // Liefert eine Liste aller Sensoren.
+      $scope.$watch("measurements", function() {
+        $scope.sensors =  _($scope.measurements).keys();
+      }, true);
 
-            var options = _.extend(
-              generate_options(current_colors),
-              { series: [serie] });
+      /**
+       *  Letzte Temperatur des Sensors
+       *  @param sensor string
+       */
+      $scope.currentTemperature = function(sensor) {
+        var data = $scope.measurements[sensor];
+        return _(data).last().v / 100.0;
+      };
 
-            // Chart in der DOM platzieren.
-            $(panel).find('.chart')
-              .highcharts(options);
+      // Messungen für alle Sensoren laden.
+      $http.get('api/measurements.json').
+        success(function(data) {
+          $scope.measurements = data;
+          _(_(data).keys()).each(function(s) {
+            $scope.chartConfig.series.push( create_serie_for(data, s) );
+          });
+        }).
+        error(alert);
 
-            // TODO: Hintegrundfarbe setzten besser machen!
-            $(panel).css('background', current_colors[0]);
-          }
-
-        });
-
-      }).
-      fail(function(error) {
-        alert(error);
-      });
+      $scope.chartConfig = generate_options(colors[0]);
+    });
 
 
-      // SSE fÃ¼r TemperaturÃ¤nderungen init.
-      var source = new EventSource('/realtime/measurements');
-        source.addEventListener('update', function(e) {
-        update = JSON.parse(e.data);
-        temp = update.data.v / 100.0;
-        ago = $.timeago(new Date(update.data.d*1000));
-        $sensor = $('[data-sensor="' + update.sensor + '"]');
-        $sensor.find('.temperature > span').text(temp);
-        $sensor.find('.timeago > .val').text(ago);
-      });
-      
-  });
+  // $(function() {
+  //   $.when($.getJSON("/api/measurements.json")).
+  //     then(function(data) {
+  //       $(".sensor").each(function(i, panel) {
+  //
+  //         var sensor = $(panel).data('sensor');
+  //         if (sensor !== undefined) {
+  //           // Farbe fÃ¼r diesen Chart.
+  //           var current_colors = colors[i%colors.length];
+  //         
+  //           // Daten fÃ¼r den einen Sensor filtern.
+  //           var serie = create_serie_for(data, sensor);
+  //
+  //           var options = _.extend(
+  //             generate_options(current_colors),
+  //             { series: [serie] });
+  //
+  //           // Chart in der DOM platzieren.
+  //           $(panel).find('.chart')
+  //             .highcharts(options);
+  //
+  //           // TODO: Hintegrundfarbe setzten besser machen!
+  //           $(panel).css('background', current_colors[0]);
+  //         }
+  //
+  //       });
+  //
+  //     }).
+  //     fail(function(error) {
+  //       alert(error);
+  //     });
+  //
+  //
+  //     // SSE fÃ¼r TemperaturÃ¤nderungen init.
+  //     var source = new EventSource('/realtime/measurements');
+  //       source.addEventListener('update', function(e) {
+  //       update = JSON.parse(e.data);
+  //       temp = update.data.v / 100.0;
+  //       ago = $.timeago(new Date(update.data.d*1000));
+  //       $sensor = $('[data-sensor="' + update.sensor + '"]');
+  //       $sensor.find('.temperature > span').text(temp);
+  //       $sensor.find('.timeago > .val').text(ago);
+  //     });
+  //     
+  // });
 
 })();

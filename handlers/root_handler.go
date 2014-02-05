@@ -1,6 +1,7 @@
 package handlers
 
 import (
+  "log"
   "net/http"
   "html/template"
 )
@@ -10,5 +11,9 @@ var (
 )
 
 func RootHandler(res http.ResponseWriter) {
-  templates.ExecuteTemplate(res, "index.html", nil)
+  err := templates.ExecuteTemplate(res, "index.html", nil)
+  if err != nil {
+    res.WriteHeader(http.StatusInternalServerError)
+    log.Panic(err)
+  }
 }
