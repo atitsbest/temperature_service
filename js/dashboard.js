@@ -37,13 +37,13 @@
           enabled: false
       },
       plotOptions: {
-          series: {
+          area: {
             //fillColor: null,
-            fillOpacity: 0.2
+            fillOpacity: 0.2,
+            marker: {
+              enabled: false
+            }
           },
-          marker: {
-            enabled: false
-          }
       },
       tooltip: {
           enabled: true,
