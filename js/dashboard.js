@@ -2,8 +2,8 @@
 
   var colors= [
    ['#A6C776', '#A0C170', '#fff'],
-   ['#82578F', '#765189', '#fff'], 
-   ['#D98C80', '#D38674', '#fff'], 
+   ['#82578F', '#765189', '#fff'],
+   ['#D98C80', '#D38674', '#fff'],
    ['#D8B380', '#D2AD7A', '#fff'],
    ['#56748B', '#527078', '#fff']
   ];
@@ -12,6 +12,7 @@
     return {
       series: [],
       chart: {
+          renderTo: 'mainChart',
           type: 'area',
           height: 200
       },
@@ -53,7 +54,7 @@
           }
       },
       credits: {
-        enabled: false    
+        enabled: false
       }
     };
   }
@@ -62,17 +63,17 @@
   {
       var values = data[name]
         .map(function(v) { return [v.d*1000, v.v/100.0]; });
-    
+
       return {
         name: name,
         data: values
       };
   }
 
-  angular.module('temperature', ['highcharts-ng']).
-    
+  angular.module('temperature', []).
+
     config(function($interpolateProvider) {
-      $interpolateProvider.startSymbol('%%');
+      $interpolateProvider.startSymbol('%%'); // Damit wir keine Probleme mit den Go-Templates bekommen.
       $interpolateProvider.endSymbol('%%');
     }).
 
@@ -101,12 +102,19 @@
         success(function(data) {
           $scope.measurements = data;
           _(_(data).keys()).each(function(s) {
-            $scope.chartConfig.series.push( create_serie_for(data, s) );
+            chart.addSeries( create_serie_for(data, s) );
           });
         }).
-        error(alert);
+        error(alert)
+        ['finally'](function() { chart.hideLoading(); });
 
       $scope.chartConfig = generate_options(colors[0]);
+
+      // Chart gleich mal anzeigen, auch wenn wir noch keine Daten haben...
+      var chart = new Highcharts.Chart($scope.chartConfig);
+      // ...dafür zeigen wir eine "laden..."-Meldung.
+      chart.showLoading();
+
     });
 
 
