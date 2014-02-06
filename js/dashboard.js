@@ -36,12 +36,15 @@
       legend: {
           enabled: false
       },
-      // plotOptions: {
-      //     series: {
-      //       //fillColor: null,
-      //       fillOpacity: 0.2
-      //     }
-      // },
+      plotOptions: {
+          series: {
+            //fillColor: null,
+            fillOpacity: 0.2
+          },
+          marker: {
+            enabled: false
+          }
+      },
       tooltip: {
           enabled: true,
           formatter: function() {
