@@ -66,7 +66,8 @@ func GetMeasurementsHandler(redisUrl *string) func(w http.ResponseWriter) {
       ms, err := con.Cmd("zrange", sensor, 0, -1).List()
       if err != nil { log.Fatal(err) }
 
-      rows[i] = fmt.Sprintf(`"%s":[%s]`, sensor, strings.Join(ms, ","))
+      sensorName := strings.TrimRight(sensor, ":all")
+      rows[i] = fmt.Sprintf(`"%s":[%s]`, sensorName, strings.Join(ms, ","))
     }
 
     w.Header().Set("Content-Type", "application/json; charset=utf-8")
