@@ -1,21 +1,23 @@
 (function() {
+  var colors = [
+       '#A6C776',
+       '#82578F',
+       '#D98C80',
+       '#D8B380',
+       '#56748B'];
 
-  var colors= [
-   ['#A6C776', '#A0C170', '#fff'],
-   ['#82578F', '#765189', '#fff'],
-   ['#D98C80', '#D38674', '#fff'],
-   ['#D8B380', '#D2AD7A', '#fff'],
-   ['#56748B', '#527078', '#fff']
-  ];
-
-  function generate_options(colors) {
+  function generate_options() {
     return {
       series: [],
       chart: {
           renderTo: 'mainChart',
           type: 'area',
-          height: 200
+          height: 200,
+	  spacingLeft: 0,
+	  spacingRight: 0,
+	  backgroundColor: '#333'
       },
+      colors: colors,
       title: {
           text: ''
       },
@@ -24,15 +26,31 @@
       },
       xAxis: {
           type: 'datetime',
+	  lineWidth: 3,
+	  lineColor: '#666',
+	  tickColor: '#666',
           dateTimeLabelFormats: { // don't display the dummy year
               month: '%e. %b',
               year: '%b'
-          }
+          },
+	  labels: {
+	  	style: {
+			color: '#666',
+			"font-style": 'italic'
+		}
+	  }
       },
       yAxis: {
           title: {
-              text: 'Temperatur'
-          }
+              text: null
+          },
+	  labels: {
+	  	style: {
+			color: '#666',
+			"font-style": 'italic'
+		}
+	  },
+	  gridLineColor: '#666'
       },
       legend: {
           enabled: false
@@ -40,7 +58,7 @@
       plotOptions: {
           area: {
             //fillColor: null,
-            fillOpacity: 0.2,
+            fillOpacity: 0.3,
             marker: {
               enabled: false
             }
@@ -50,7 +68,7 @@
           enabled: true,
           formatter: function() {
                   return '<b>'+ this.series.name +'</b><br/>'+
-                  Highcharts.dateFormat('%e. %b', this.x) +': '+ this.y +' Â°C';
+                  Highcharts.dateFormat('%e. %b', this.x) +': '+ this.y +' °C';
           }
       },
       credits: {
@@ -82,6 +100,7 @@
       $scope.measurements = {};
       // Liste der Sensoren.
       $scope.sensors = [];
+      $scope.colors = colors;
 
       // Liefert eine Liste aller Sensoren.
       $scope.$watch("measurements", function() {
@@ -97,7 +116,6 @@
         return _(data).last().v / 100.0;
       };
 
-      // Messungen für alle Sensoren laden.
       $http.get('api/measurements.json').
         success(function(data) {
           $scope.measurements = data;
@@ -108,7 +126,7 @@
         error(alert)
         ['finally'](function() { chart.hideLoading(); });
 
-      $scope.chartConfig = generate_options(colors[0]);
+      $scope.chartConfig = generate_options();
 
       // Chart gleich mal anzeigen, auch wenn wir noch keine Daten haben...
       var chart = new Highcharts.Chart($scope.chartConfig);
@@ -116,52 +134,5 @@
       chart.showLoading();
 
     });
-
-
-  // $(function() {
-  //   $.when($.getJSON("/api/measurements.json")).
-  //     then(function(data) {
-  //       $(".sensor").each(function(i, panel) {
-  //
-  //         var sensor = $(panel).data('sensor');
-  //         if (sensor !== undefined) {
-  //           // Farbe fÃ¼r diesen Chart.
-  //           var current_colors = colors[i%colors.length];
-  //         
-  //           // Daten fÃ¼r den einen Sensor filtern.
-  //           var serie = create_serie_for(data, sensor);
-  //
-  //           var options = _.extend(
-  //             generate_options(current_colors),
-  //             { series: [serie] });
-  //
-  //           // Chart in der DOM platzieren.
-  //           $(panel).find('.chart')
-  //             .highcharts(options);
-  //
-  //           // TODO: Hintegrundfarbe setzten besser machen!
-  //           $(panel).css('background', current_colors[0]);
-  //         }
-  //
-  //       });
-  //
-  //     }).
-  //     fail(function(error) {
-  //       alert(error);
-  //     });
-  //
-  //
-  //     // SSE fÃ¼r TemperaturÃ¤nderungen init.
-  //     var source = new EventSource('/realtime/measurements');
-  //       source.addEventListener('update', function(e) {
-  //       update = JSON.parse(e.data);
-  //       temp = update.data.v / 100.0;
-  //       ago = $.timeago(new Date(update.data.d*1000));
-  //       $sensor = $('[data-sensor="' + update.sensor + '"]');
-  //       $sensor.find('.temperature > span').text(temp);
-  //       $sensor.find('.timeago > .val').text(ago);
-  //     });
-  //     
-  // });
 
 })();
